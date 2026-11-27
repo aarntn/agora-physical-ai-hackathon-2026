@@ -1,3 +1,2 @@
 # Firmware
-
-Confirm board revision and expansion modules. Start from official ESP-Mosaico examples: https://github.com/esp-mosaico. Test USB power, Wi-Fi, screen, microphone, speaker, IMU and camera if supplied. Record ESP-IDF version before adding build configuration.
+Start with docs/HARDWARE.md and organizer BotStation reference. Confirm kit revision and available modules before flashing or choosing framework. Record actual readings and physical output.

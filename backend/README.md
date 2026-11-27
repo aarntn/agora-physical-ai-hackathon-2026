@@ -1,3 +1,2 @@
 # Backend
-
-Proposed FastAPI service. Agree the device event schema, response contract and AI provider at kickoff. Implement health check, event validation, timeouts and mocked tests. Never log raw credentials or unnecessary personal data.
+Stack undecided. Prefer the organizer Next.js/TypeScript starter if permitted and compatible; Python/Go alternatives available. Agree event/action contract in docs/ARCHITECTURE.md. Validate inputs, separate AI reasoning from authoritative state, keep credentials server-side. Implement only after rules and product selection.

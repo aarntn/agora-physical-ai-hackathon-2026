@@ -1,8 +1,8 @@
-## Summary
-
-## Testing / evidence
-
+## Summary / linked issue
+## Rubric evidence (which criterion?)
+## Actual tests and limitations
 ## Checklist
-- [ ] Tested relevant changes
-- [ ] No credentials or sensitive data
-- [ ] Documented limitations
+- [ ] Small scoped change; main remains demo-ready
+- [ ] Actual tests recorded; simulated data labeled
+- [ ] No secrets or personal data
+- [ ] Setup / architecture updated if needed
