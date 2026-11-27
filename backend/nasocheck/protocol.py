@@ -1,7 +1,9 @@
 """Session protocol, phrases and plain-language messages (EN / BM).
 
 Phrase lists are a first draft: oral phrases avoid /m n ng/ so that any nasal
-energy is leakage. Review wording with a Malay-speaking speech therapist.
+energy is leakage. Review wording with a Malay-speaking speech therapist, and prefer the validated
+Malay stimuli of Ibrahim, Reilly & Kilpatrick (2012, Cleft Palate Craniofac J) once
+the full text is available.
 """
 from __future__ import annotations
 

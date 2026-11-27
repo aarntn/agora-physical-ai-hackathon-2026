@@ -31,6 +31,7 @@ python scripts/fake_device.py --base http://localhost:8000 --lang ms \
 | `POST /trials/raw` | `X-Device-Key` | device | **fallback:** raw int16 samples (base64), backend runs the Python DSP and saves `.npz` under `<log dir>/raw/` |
 | `GET /evidence`, `GET /evidence.csv` | `X-Device-Key` | laptop | §11 trial table across sessions; per person and type: n, mean, SD, range; `?include_simulated=false` |
 | `GET /config` | `X-Device-Key` | laptop | active thresholds, DSP settings, phrases |
+| `GET /session/{id}/report` | `X-Device-Key` | therapist | plain-text session report with interpretation caveats |
 | `POST /tools/getNextStep` | `X-Tool-Secret` | agent | first instruction |
 | `POST /tools/getLatestTrial` | `X-Tool-Secret` | agent | waits ≤2 s, phrase check on `heard_text`, result + next step, or `pending` |
 | `POST /tools/getSummary` | `X-Tool-Secret` | agent | averages, nasal−oral, change vs previous session of same `user_ref` |

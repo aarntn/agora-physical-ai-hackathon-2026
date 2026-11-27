@@ -130,6 +130,10 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
                 "trials": [sess.trial_view(r) for r in sess.trials],
                 "summary": speech.summary_response(st, sess)}
 
+    @app.get("/session/{sid}/report", dependencies=[Depends(device_auth)])
+    def session_report(sid: str) -> PlainTextResponse:
+        return PlainTextResponse(speech.therapist_report(st, session_or_404(sid)))
+
     @app.post("/trials", dependencies=[Depends(device_auth)])
     def post_trial(t: TrialIn) -> dict:
         try:

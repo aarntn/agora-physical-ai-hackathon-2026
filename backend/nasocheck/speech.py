@@ -106,3 +106,35 @@ def summary_response(store: Store, s: Session) -> dict:
         say = "[SIMULATED DATA] " + say
     return {**st, "change_vs_previous_oral_db": change,
             "previous_session_id": prev.session_id if prev else None, "say": say}
+
+
+def therapist_report(store: Store, s: Session) -> str:
+    """Plain-text session report for the supervising therapist (English, clinical tone).
+
+    Parent-delivered practice works best under therapist supervision
+    (ASHA Perspectives 2023), so every session is reviewable.
+    """
+    st = store.stats(s)
+    m = st["mean_score_db"]
+    lines = [f"NasoCheck session report: {s.session_id}",
+             f"Client ref: {s.user_ref}   Language: {s.lang}   Trials: {len(s.trials)}",
+             "", f"{'#':>2}  {'type':7} {'status':18} {'score dB':>8} {'spread':>6}  phrase / reasons"]
+    for r in s.trials:
+        v = s.trial_view(r)
+        sc = "-" if v["score_db"] is None else f"{v['score_db']:.1f}"
+        sp = "-" if v["spread_db"] is None else f"{v['spread_db']:.1f}"
+        detail = ", ".join(v["reasons"]) or (v["phrase"] or "")
+        lines.append(f"{r.seq + 1:>2}  {v['type']:7} {v['status']:18} {sc:>8} {sp:>6}  {detail}")
+    lines += ["", f"Mean score (valid): oral {m['oral']}, nasal {m['nasal']}, control {m['control']} dB",
+              f"Nasal minus oral: {st['nasal_minus_oral_db']} dB   Repeated (rejected) attempts: {st['rejected']}"]
+    prev = store.previous_session(s)
+    if prev:
+        lines.append(f"Previous session: {prev.session_id}, mean oral "
+                     f"{store.stats(prev)['mean_score_db']['oral']} dB")
+    if st["simulated_trials"]:
+        lines.append(f"WARNING: {st['simulated_trials']} trials are SIMULATED test data.")
+    lines += ["", "Interpretation: score = nasal skin vibration relative to voice level, 0 dB = the client's own hum.",
+              "Higher (closer to 0) means more nasal coupling. This is a physical measure that correlates with",
+              "airflow more than with perceptual ratings; it tracks change and is not a diagnosis.",
+              f"Changes under {MEANINGFUL_CHANGE_DB:.0f} dB, or with fewer than {MIN_TRIALS_FOR_COMPARISON} valid trials, are not interpreted."]
+    return "\n".join(lines) + "\n"

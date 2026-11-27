@@ -200,3 +200,14 @@ def test_live_page_served(env):
     _, _, c = env
     r = c.get("/live")
     assert r.status_code == 200 and "NasoCheck live" in r.text
+
+
+def test_therapist_report(env):
+    _, _, c = env
+    sid = new_session(c, user_ref="P7")["session_id"]
+    post(c, sid, "h", 0.0)
+    post(c, sid, "o", -20.0)
+    post(c, sid, "bad", -8.0, spread_db=9.0)
+    rep = c.get(f"/session/{sid}/report", headers=DEV).text
+    assert "Client ref: P7" in rep and "unstable" in rep and "-20.0" in rep
+    assert "SIMULATED" in rep and "not a diagnosis" in rep

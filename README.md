@@ -61,7 +61,7 @@ flowchart LR
 ## Evidence
 | What | Result |
 |---|---|
-| Backend unit/API tests | **53 pass** (SIMULATED data) |
+| Backend unit/API tests | **54 pass** (SIMULATED data) |
 | C DSP vs Python reference | **3/3 vectors match within 0.001 dB** (compiled with `-Wall -Wextra -Werror`) |
 | Go/no-go on hardware: /m/ vs /a/, 2 people, control | _Not run yet; [protocol](docs/NASOCHECK.md#10-gono-go-test-first-30-minutes)_ |
 | End-to-end trials with live agent | _Not run yet_ |

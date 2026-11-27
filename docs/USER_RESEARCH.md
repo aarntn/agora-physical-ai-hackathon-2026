@@ -9,6 +9,15 @@ Status: plan only, 28 Nov 2026. No interviews have been run yet. Record findings
 4. **Language:** whether the BM and English phrase lists and the coaching wording are appropriate (the phrases are a draft; see `backend/nasocheck/protocol.py`).
 5. **Kill signals** (proposal §14): "ear judgement is enough", "home numbers would mislead families", "the Nasometer is easy to access."
 
+## 1b. Secondary research (web search, 28 Nov 2026; abstracts only, verify the full text)
+| Finding | Implication for NasoCheck | Source |
+|---|---|---|
+| Malay nasalance norms exist: 150 children aged 6–12; oral passage ≈13.9%, nasal ≈60.3%; age and sex effects clinically minor | Our phrases should come from these **validated Malay stimuli** after review; we don't create norms | [Ibrahim, Reilly & Kilpatrick 2012](https://research-repository.griffith.edu.au/items/f66cb5f7-1503-567a-aead-20be4f278afd); [Kelantan dialect study](https://search.bvsalud.org/gim/resource/en/wpr-628040) |
+| Parents rated biofeedback positively; children found repetitive articulation practice "boring" | Keep sessions short; the coach should encourage, never criticise (already in the prompt) | [Pilot RCT, PMC11626862](https://pmc.ncbi.nlm.nih.gov/articles/PMC11626862/) |
+| Trained parents can deliver cleft speech practice under therapist supervision | The holder is the parent, supervised by the therapist; the therapist needs a **reviewable session report** (built: `GET /session/{id}/report`) | [ASHA Perspectives 2023](https://pubs.asha.org/doi/10.1044/2023_PERSP-22-00253) |
+| Clinician acceptance of biofeedback tech is under-studied; SLPs report training gaps in cleft care | Interviews must probe trust and training burden; the report should be self-explanatory | [Cleland et al. 2025](https://strathprints.strath.ac.uk/id/eprint/91974); [LSHSS 2021](https://pubs.asha.org/doi/10.1044/2021_LSHSS-21-00071) |
+| Accelerometry correlates with airflow (r = .87) more than with perceptual ratings (r = .49) | Position the device as "track change", not "diagnose" | [JSLHR 2016](https://pubs.asha.org/doi/10.1044/2016_JSLHR-S-15-0407) |
+
 ## 2. Method and participants
 The hackathon day only allows short interviews. These are hypothesis checks, not validation; the sample is too small to generalise.
 
