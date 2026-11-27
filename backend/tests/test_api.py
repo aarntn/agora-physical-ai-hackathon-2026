@@ -1,13 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from nasocheck.agora_client import join_body
+from nasocheck.agora_client import join_body, session_tool_token
 from nasocheck.app import create_app
 from nasocheck.config import Settings
 from nasocheck.store import Store
 
 DEV = {"X-Device-Key": "dev"}
-TOOL = {"X-Tool-Secret": "tool"}
+TOOL = {"X-Tool-Secret": "tool"}  # NOT valid for tools any more: tokens are per session
+
+
+def tok(sid):
+    return {"X-Tool-Secret": session_tool_token("tool", sid)}
 
 
 def settings(tmp_path):
@@ -42,8 +46,9 @@ def post(c, sid, tid, ratio, **kw):
 
 
 def latest(c, heard=""):
-    r = c.post("/tools/getLatestTrial", json={"session_id": "", "heard_text": heard,
-                                               "tool_call_id": "x"}, headers=TOOL)
+    sid = c.app.state.store.active_session_id
+    r = c.post("/tools/getLatestTrial", json={"session_id": sid, "heard_text": heard,
+                                               "tool_call_id": "x"}, headers=tok(sid))
     assert r.status_code == 200
     return r.json()
 
@@ -91,7 +96,7 @@ def test_full_protocol_flow(env):
     assert out["score_db"] == -6.0 and out["next_step"]["type"] == "done"
     assert "12 perpuluhan 0 desibel" in out["say"]
 
-    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=TOOL).json()
+    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=tok(sid)).json()
     assert summ["mean_score_db"]["oral"] == -18.0
     assert summ["nasal_minus_oral_db"] == 12.0
     assert summ["rejected"] == 2
@@ -107,7 +112,7 @@ def test_spoken_numbers_are_consistent(env):
     post(c, sid, "n", -8.04)
     out = latest(c, "papa pakai topi")
     assert "11 perpuluhan 8 desibel" in out["say"]           # -8.0 - (-19.8)
-    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=TOOL).json()
+    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=tok(sid)).json()
     assert summ["nasal_minus_oral_db"] == 11.8
 
 
@@ -154,7 +159,7 @@ def test_replay_and_previous_session_comparison(env):
         post(c, sid, f"o{i}", oral)
         latest(c, "papa pakai topi")
         post(c, sid, f"p{i}", oral, type="oral")   # second oral trial (min 2 to compare)
-    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=TOOL).json()
+    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=tok(sid)).json()
     assert summ["change_vs_previous_oral_db"] == -6.0
     assert "lebih rendah" in summ["say"]
 
@@ -187,6 +192,7 @@ def test_join_body_shape(tmp_path):
             if v.startswith("{{args."):
                 assert v[7:-2] in t["function"]["parameters"]["required"]
     assert p["llm"]["template_variables"]["session_id"] == "sabc"
+    assert p["llm"]["template_variables"]["tool_secret"] == session_tool_token("tool", "sabc")
 
 
 def test_no_comparison_from_single_trial(env):
@@ -196,6 +202,6 @@ def test_no_comparison_from_single_trial(env):
         post(c, sid, f"h{i}", 0.0)
         post(c, sid, f"o{i}", -12.0 - 6 * i)
         post(c, sid, f"q{i}", -12.0 - 6 * i, type="oral") if i == 0 else None
-    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=TOOL).json()
+    summ = c.post("/tools/getSummary", json={"session_id": sid}, headers=tok(sid)).json()
     assert summ["change_vs_previous_oral_db"] is None
     assert "sekurang-kurangnya dua" in summ["say"]

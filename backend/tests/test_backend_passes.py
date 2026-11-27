@@ -16,7 +16,7 @@ from nasocheck.store import Store
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import relay as relay_mod  # noqa: E402
 
-from test_api import DEV, TOOL, latest, new_session, post, settings  # noqa: E402
+from test_api import DEV, TOOL, latest, new_session, post, settings, tok  # noqa: E402
 
 
 @pytest.fixture
@@ -153,6 +153,50 @@ def test_relay_rejects_wrong_key(env):
     assert r.handle_line('NC_SESSION {}')["http"] == 401
 
 
-def test_tool_auth_unchanged(env):
+# ---- security fixes ---------------------------------------------------------
+def test_tool_token_is_per_session(env):
     _, _, c = env
-    assert c.post("/tools/getSummary", json={}, headers=TOOL).json()["status"] == "no_session"
+    a = new_session(c)["session_id"]
+    b = new_session(c)["session_id"]
+    assert c.post("/tools/getSummary", json={}, headers=TOOL).status_code == 401
+    assert c.post("/tools/getSummary", json={"session_id": a}, headers=TOOL).status_code == 401
+    assert c.post("/tools/getSummary", json={"session_id": b}, headers=tok(a)).status_code == 401
+    assert c.post("/tools/getSummary", json={"session_id": a}, headers=tok(a)).json()["status"] == "ok"
+
+
+def test_fail_closed_without_keys(tmp_path):
+    s = settings(tmp_path)
+    s.device_key = s.tool_secret = ""
+    s.dev_mode = False
+    c = TestClient(create_app(s, Store(s.log_path)))
+    assert c.post("/session", json={}).status_code == 503
+    assert c.post("/tools/getSummary", json={}).status_code == 503
+    s.dev_mode = True
+    c = TestClient(create_app(s, Store(s.log_path)))
+    assert c.post("/session", json={}).status_code == 200
+    assert c.post("/tools/getSummary", json={}).json()["status"] == "ok"   # active-session fallback
+
+
+def test_csv_formula_injection_neutralised(env):
+    _, _, c = env
+    sid = new_session(c)["session_id"]
+    post(c, sid, "h", 0.0)
+    post(c, sid, "o", -20.0)
+    latest(c, "=HYPERLINK(\"http://x\")")
+    r = c.get("/evidence.csv", headers=DEV)
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    assert "'=HYPERLINK" in r.text and ",=HYPERLINK" not in r.text
+
+
+def test_raw_payload_size_capped_before_decode(env):
+    _, _, c = env
+    sid = new_session(c)["session_id"]
+    big = {**raw_body(sid, "big", -10.0), "mic_b64": "A" * 1_400_000}
+    assert c.post("/trials/raw", json=big, headers=DEV).status_code == 422
+
+
+def test_live_page_served(env):
+    _, _, c = env
+    r = c.get("/live")
+    assert r.status_code == 200 and "NasoCheck live" in r.text

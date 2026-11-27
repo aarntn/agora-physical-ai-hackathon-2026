@@ -42,3 +42,14 @@ def test_table_control_too_close(tmp_path):
     csv = tmp_path / "r.csv"
     csv.write_text("person,label,ratio_db\nP1,a,-20\nP1,m,-2\nP1,control,-5\n")
     assert gonogo.verdict(gonogo.load_table(csv), 6.0) is False
+
+
+def test_suggest_thresholds():
+    import suggest_thresholds as sug
+    rows = [{"type": "oral", "spread_db": str(s), "voiced_frames": "40", "accel_snr_db": "15"}
+            for s in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0)]
+    rows.append({"type": "control", "spread_db": "", "voiced_frames": "30", "accel_snr_db": "5"})
+    v = sug.suggest(rows)["values"]
+    assert v["NC_MAX_SPREAD_DB"] == 3.9 and v["NC_MIN_ACCEL_SNR_DB"] == 8.0
+    assert v["NC_MIN_VOICED_FRAMES"] == 15
+    assert "spread" in sug.suggest(rows[:2])["notes"][0]

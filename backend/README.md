@@ -35,7 +35,12 @@ python scripts/fake_device.py --base http://localhost:8000 --lang ms \
 | `POST /tools/getLatestTrial` | `X-Tool-Secret` | agent | waits ≤2 s, phrase check on `heard_text`, result + next step, or `pending` |
 | `POST /tools/getSummary` | `X-Tool-Secret` | agent | averages, nasal−oral, change vs previous session of same `user_ref` |
 
-If `DEVICE_KEY` / `TOOL_SECRET` are unset the endpoints are open (dev only; a warning is logged).
+**Auth fails closed.** Without `DEVICE_KEY` / `TOOL_SECRET`, requests get 503 unless `NASOCHECK_DEV_MODE=1`.
+- Tool calls carry a **per-session token**, `HMAC-SHA256(TOOL_SECRET, session_id)`, which the backend passes to Agora as a template variable. A token can only read its own session.
+- `/evidence.csv` neutralises spreadsheet formulas, because `heard_text` comes from ASR.
+- Raw payloads are size-capped before decoding.
+- `GET /live` is the live evidence page for the demo video; its data still needs the device key.
+- `scripts/suggest_thresholds.py trials.csv` proposes `NC_*` values from go/no-go trials.
 
 ## Design decisions (filling gaps in the proposal)
 - **Score** = `ratio_db − median(valid hum ratio_db before this trial)`, equal to the HONC `20·log10(k·A/M)` with `k` from the hum.

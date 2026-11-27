@@ -18,6 +18,7 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nasocheck import dsp, protocol, synth  # noqa: E402
+from nasocheck.agora_client import session_tool_token  # noqa: E402
 
 COUPLING = {"hum": 0.0, "oral": -20.0, "nasal": -8.0, "control": -30.0}
 
@@ -49,11 +50,12 @@ def main() -> None:
     a = ap.parse_args()
 
     dev = {"X-Device-Key": a.device_key}
-    tool = {"X-Tool-Secret": a.tool_secret}
     c = httpx.Client(base_url=a.base, timeout=10)
     sess = c.post("/session", headers=dev, json={"lang": a.lang, "user_ref": a.user,
                                                   "start_agent": a.start_agent}).raise_for_status().json()
     sid = sess["session_id"]
+    # what Agora sends: per-session token derived from TOOL_SECRET
+    tool = {"X-Tool-Secret": session_tool_token(a.tool_secret, sid) if a.tool_secret else ""}
     print(f"session {sid}  agent_started={sess['agent_started']}  {sess.get('agent_error') or ''}")
     if a.agent:
         print("AGENT>", c.post("/tools/getNextStep", headers=tool, json={"session_id": sid}).json()["say"])

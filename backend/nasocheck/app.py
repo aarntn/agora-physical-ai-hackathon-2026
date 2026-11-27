@@ -13,7 +13,7 @@ import secrets
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 
 from . import agora_client, dsp, protocol, raw, speech
 from .config import Settings, load_dotenv
@@ -21,6 +21,14 @@ from .contracts import SessionIn, ToolLatestIn, ToolSessionIn, TrialIn
 from .store import Store
 
 log = logging.getLogger("nasocheck")
+WEB_INDEX = Path(__file__).resolve().parents[2] / "web" / "index.html"
+
+
+def _csv_safe(v):
+    """Neutralise spreadsheet formulas (heard_text comes from ASR)."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
 
 
 def create_app(settings: Settings | None = None, store: Store | None = None) -> FastAPI:
@@ -35,17 +43,30 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
 
     for name, val in (("DEVICE_KEY", s.device_key), ("TOOL_SECRET", s.tool_secret)):
         if not val:
-            log.warning("%s not set: endpoints are open (dev mode only)", name)
+            log.warning("%s not set: %s", name, "OPEN (NASOCHECK_DEV_MODE=1)" if s.dev_mode
+                        else "requests will be refused (fail closed)")
 
     def _check(expected: str, got: str | None) -> None:
-        if expected and not secrets.compare_digest(expected, got or ""):
+        if not expected:
+            if s.dev_mode:
+                return
+            raise HTTPException(503, "server not configured: set DEVICE_KEY / TOOL_SECRET")
+        if not secrets.compare_digest(expected, got or ""):
             raise HTTPException(401, "bad credentials")
 
     def device_auth(x_device_key: str | None = Header(default=None)) -> None:
         _check(s.device_key, x_device_key)
 
-    def tool_auth(x_tool_secret: str | None = Header(default=None)) -> None:
-        _check(s.tool_secret, x_tool_secret)
+    def tool_session(body: ToolSessionIn | ToolLatestIn, x_tool_secret: str | None):
+        """Tool calls carry a per-session token (HMAC of the session id), so a
+        token can only read its own session. Active-session fallback: dev only."""
+        if not s.tool_secret:
+            _check("", None)
+            return st.resolve(body.session_id)
+        if not body.session_id:
+            raise HTTPException(401, "session_id required")
+        _check(agora_client.session_tool_token(s.tool_secret, body.session_id), x_tool_secret)
+        return st.sessions.get(body.session_id)
 
     def session_or_404(sid: str):
         sess = st.sessions.get(sid)
@@ -138,13 +159,15 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     def evidence(include_simulated: bool = True) -> dict:
         return st.evidence_summary(include_simulated)
 
-    @app.get("/evidence.csv", dependencies=[Depends(device_auth)], response_class=PlainTextResponse)
-    def evidence_csv(include_simulated: bool = True) -> str:
+    @app.get("/evidence.csv", dependencies=[Depends(device_auth)])
+    def evidence_csv(include_simulated: bool = True) -> PlainTextResponse:
         buf = io.StringIO()
         w = csv.DictWriter(buf, fieldnames=Store.EVIDENCE_FIELDS, lineterminator="\n")
         w.writeheader()
-        w.writerows(st.evidence_rows(include_simulated))
-        return buf.getvalue()
+        w.writerows([{k: _csv_safe(v) for k, v in row.items()}
+                     for row in st.evidence_rows(include_simulated)])
+        return PlainTextResponse(buf.getvalue(), media_type="text/csv",
+                                 headers={"Content-Disposition": "attachment; filename=nasocheck_evidence.csv"})
 
     @app.get("/config", dependencies=[Depends(device_auth)])
     def config() -> dict:
@@ -156,17 +179,17 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     def _no_session() -> dict:
         return {"status": "no_session", "say": "No measurement session is running. Ask the user to start one on the device."}
 
-    @app.post("/tools/getNextStep", dependencies=[Depends(tool_auth)])
-    def tool_next(body: ToolSessionIn) -> dict:
-        sess = st.resolve(body.session_id)
+    @app.post("/tools/getNextStep")
+    def tool_next(body: ToolSessionIn, x_tool_secret: str | None = Header(default=None)) -> dict:
+        sess = tool_session(body, x_tool_secret)
         if sess is None:
             return _no_session()
         nxt = sess.next_step_dict()
         return {"status": "ok", "next_step": nxt, "say": nxt["instruction"]}
 
-    @app.post("/tools/getLatestTrial", dependencies=[Depends(tool_auth)])
-    async def tool_latest(body: ToolLatestIn) -> dict:
-        sess = st.resolve(body.session_id)
+    @app.post("/tools/getLatestTrial")
+    async def tool_latest(body: ToolLatestIn, x_tool_secret: str | None = Header(default=None)) -> dict:
+        sess = tool_session(body, x_tool_secret)
         if sess is None:
             return _no_session()
         loop = asyncio.get_running_loop()
@@ -181,12 +204,17 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
         st.mark_reported(sess, rec)
         return speech.latest_trial_response(sess, rec)
 
-    @app.post("/tools/getSummary", dependencies=[Depends(tool_auth)])
-    def tool_summary(body: ToolSessionIn) -> dict:
-        sess = st.resolve(body.session_id)
+    @app.post("/tools/getSummary")
+    def tool_summary(body: ToolSessionIn, x_tool_secret: str | None = Header(default=None)) -> dict:
+        sess = tool_session(body, x_tool_secret)
         if sess is None:
             return _no_session()
         return {"status": "ok", **speech.summary_response(st, sess)}
+
+    @app.get("/live", include_in_schema=False)
+    def live() -> FileResponse:
+        """Evidence page for the demo video; data still needs the device key."""
+        return FileResponse(WEB_INDEX)
 
     return app
 

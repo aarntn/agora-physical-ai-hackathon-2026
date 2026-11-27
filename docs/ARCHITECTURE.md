@@ -1,6 +1,6 @@
 # System architecture: NasoCheck
 
-Status: software implemented and tested on SIMULATED data (48 backend tests, C/Python parity). Hardware not yet tested. Update this page with what actually runs on the day.
+Status: software implemented and tested on SIMULATED data (53 backend tests, C/Python parity). Hardware not yet tested. Update this page with what actually runs on the day.
 
 ## 1. Overview
 ```mermaid

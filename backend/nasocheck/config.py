@@ -44,6 +44,8 @@ class Settings:
     device_key: str = field(default_factory=lambda: _env("DEVICE_KEY"))
     agent_rtc_uid: str = field(default_factory=lambda: _env("AGENT_RTC_UID", "1001"))
     log_path: Path = field(default_factory=lambda: Path(_env("NASOCHECK_LOG", "data/events.jsonl")))
+    # Explicit opt-in to run without DEVICE_KEY / TOOL_SECRET (local dev only).
+    dev_mode: bool = field(default_factory=lambda: _env("NASOCHECK_DEV_MODE") == "1")
     tool_wait_s: float = field(default_factory=lambda: float(_env("TOOL_WAIT_S", "2.0")))
     # Rejection thresholds: tune on the day from go/no-go data, then freeze.
     thresholds: Thresholds = field(default_factory=lambda: thresholds_from_env())

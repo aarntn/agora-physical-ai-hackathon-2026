@@ -30,8 +30,9 @@ class RawTrialIn(BaseModel):
     start_ms: int = Field(default=0, ge=0)
     imu_hz: float = Field(gt=0, le=10000, description="measured from timestamps, not configured ODR")
     mic_hz: float = Field(default=16000, gt=0, le=96000)
-    accel_b64: str
-    mic_b64: str
+    # Bounded before decoding: 10 s of 3-axis int16 at 10 kHz, 10 s of int16 at 48 kHz.
+    accel_b64: str = Field(max_length=1_000_000)
+    mic_b64: str = Field(max_length=1_300_000)
     phrase_confirmed: bool = False
     simulated: bool = False
 

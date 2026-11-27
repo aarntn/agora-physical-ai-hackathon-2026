@@ -10,6 +10,8 @@ fails the call on any unresolved placeholder, so every tool argument is required
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import time
 from pathlib import Path
 
@@ -28,6 +30,11 @@ def rtc_token(s: Settings, channel: str, uid: str, ttl_s: int = 3600) -> str:
     from agora_token_builder import RtcTokenBuilder  # optional dependency
     return RtcTokenBuilder.buildTokenWithUid(s.app_id, s.app_certificate, channel,
                                              int(uid), 1, int(time.time()) + ttl_s)
+
+
+def session_tool_token(tool_secret: str, session_id: str) -> str:
+    """Per-session tool credential: a token for one session can't read another."""
+    return hmac.new(tool_secret.encode(), session_id.encode(), hashlib.sha256).hexdigest()
 
 
 def system_prompt(lang: str) -> str:
@@ -92,7 +99,7 @@ def join_body(s: Settings, *, session_id: str, channel: str, lang: str,
                                     "ms": "Maaf, ada masalah. Mari cuba lagi."}[lang],
                 "max_history": 32,
                 "params": {"model": s.llm_model},
-                "template_variables": {"session_id": session_id, "tool_secret": s.tool_secret},
+                "template_variables": {"session_id": session_id, "tool_secret": session_tool_token(s.tool_secret, session_id)},
                 "tools": tools(s.public_base_url),
             },
             "tts": {"vendor": s.tts_vendor, "params": s.tts_params},

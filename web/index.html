@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NasoCheck Live</title>
+<style>
+  :root { --bg:#0f1115; --fg:#e8e8e8; --mute:#8a8f98; --ok:#3ccf91; --bad:#ff6b6b; --warn:#f5b942; --bar:#2a2f3a; --accent:#5aa9ff; }
+  body { margin:0; font:15px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  main { max-width:960px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:0 0 4px; } .mute { color:var(--mute); }
+  .sim { background:var(--warn); color:#000; padding:2px 8px; border-radius:4px; font-weight:600; display:none; }
+  .meter { margin:20px 0; } .track { position:relative; height:28px; background:var(--bar); border-radius:6px; overflow:hidden; }
+  .fill { height:100%; background:var(--accent); width:0; transition:width .4s; }
+  .scale { display:flex; justify-content:space-between; font-size:12px; color:var(--mute); }
+  .big { font-size:40px; font-weight:700; } .next { font-size:18px; margin:8px 0 16px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--bar); }
+  .valid { color:var(--ok); } .rejected { color:var(--bad); } .needs_calibration { color:var(--warn); }
+  input { background:var(--bar); color:var(--fg); border:0; padding:6px; border-radius:4px; }
+  @media (max-width:600px){ .hide-sm { display:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>NasoCheck live session <span id="sim" class="sim">SIMULATED DATA</span></h1>
+  <div class="mute">Device key <input id="key" type="password" size="10"> · session <span id="sid">–</span></div>
+  <div class="meter">
+    <div class="big" id="score">–</div>
+    <div class="track"><div class="fill" id="fill"></div></div>
+    <div class="scale"><span>−30 dB (oral)</span><span>0 dB (hum reference)</span></div>
+  </div>
+  <div class="next" id="next">Waiting for a session…</div>
+  <table>
+    <thead><tr><th>#</th><th>Type</th><th>Status</th><th>Score (dB)</th><th class="hide-sm">Spread</th><th class="hide-sm">Reasons</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p class="mute" id="summary"></p>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+try { $("key").value = localStorage.getItem("nc-key") || ""; } catch (e) {}
+$("key").onchange = () => { try { localStorage.setItem("nc-key", $("key").value); } catch (e) {} };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function tick() {
+  const h = { "X-Device-Key": $("key").value };
+  try {
+    const health = await (await fetch("/health")).json();
+    if (!health.active_session) return;
+    const r = await fetch(`/session/${health.active_session}`, { headers: h });
+    if (!r.ok) { $("next").textContent = r.status === 401 ? "Enter the device key." : "Error " + r.status; return; }
+    const s = await r.json();
+    $("sid").textContent = s.session_id;
+    $("next").textContent = s.next_step.instruction;
+    const scored = s.trials.filter(t => t.score_db !== null);
+    const last = scored[scored.length - 1];
+    $("score").textContent = last ? `${last.score_db.toFixed(1)} dB · ${last.type}` : "–";
+    $("fill").style.width = last ? Math.max(0, Math.min(100, (last.score_db + 30) / 30 * 100)) + "%" : "0";
+    $("sim").style.display = s.trials.some(t => t.simulated) ? "inline" : "none";
+    $("rows").innerHTML = s.trials.map((t, i) => `<tr><td>${i + 1}</td><td>${esc(t.type)}</td>
+      <td class="${esc(t.status)}">${esc(t.status)}</td><td>${t.score_db ?? "–"}</td>
+      <td class="hide-sm">${t.spread_db?.toFixed?.(1) ?? "–"}</td><td class="hide-sm">${esc(t.reasons.join(", "))}</td></tr>`).join("");
+    const m = s.summary.mean_score_db;
+    $("summary").textContent = `Mean oral ${m.oral ?? "–"} dB · nasal ${m.nasal ?? "–"} dB · nasal−oral ${s.summary.nasal_minus_oral_db ?? "–"} dB · rejected ${s.summary.rejected}`;
+  } catch (e) { $("next").textContent = "Backend unreachable."; }
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>
