@@ -16,7 +16,12 @@ Team: @aarntn, @abqaryne, @mpip0505 (write access to be confirmed).
 Physical AI/technical 25%; Agora 15%; reliability 15%; innovation 15%; impact 15%; presentation 15%. Same rubric for all tracks. Round 1 is submission-only; code is not run. Video maximum 2 minutes.
 
 ## Status
-Planning and documentation only. No product implementation or measured performance yet. Do not claim a selected track, working hardware or novelty without evidence.
+Leading proposal: **[NasoCheck, a pocket nasality meter](docs/NASOCHECK.md)** (Social Impact), pending the hardware go/no-go (§10). Software is implemented and tested on SIMULATED data only:
+- [backend/](backend/README.md): FastAPI sessions, calibration, rejection rules and Agora tool endpoints, plus go/no-go and fake-device scripts.
+- [firmware/nasocheck_dsp/](firmware/README.md): C99 per-trial analysis with Python parity tests.
+- [agora/](agora/README.md): agent prompt and tool declarations.
+
+There are no hardware results yet. Do not claim working hardware, a selected track or novelty without evidence.
 
 ## Components
 firmware/ — device; agora/ — voice/RTC; backend/ — application logic; web/ — optional UI. Select stack at kickoff. See Issues for work items.

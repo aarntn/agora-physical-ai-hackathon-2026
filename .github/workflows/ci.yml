@@ -31,3 +31,25 @@ jobs:
             echo "Tracked environment file found"
             exit 1
           fi
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Unit and API tests (SIMULATED data only, not hardware validation)
+        run: python -m pytest -q
+  firmware-dsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build C DSP on host and check parity with Python reference
+        working-directory: firmware/nasocheck_dsp
+        run: |
+          cc -O2 -std=c99 -Wall -Wextra -Werror -I. nasocheck_dsp.c test/test_vectors.c -lm -o test_vectors
+          ./test_vectors ../../fixtures/dsp_vectors/*.txt

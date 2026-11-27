@@ -11,3 +11,6 @@ node_modules/
 .next/
 *.pem
 *.key
+data/
+*.jsonl
+captures/
