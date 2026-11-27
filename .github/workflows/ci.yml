@@ -1,0 +1,23 @@
+name: Starter checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify scaffold
+        run: |
+          test -f README.md
+          test -f .env.example
+          test -f docs/WORKFLOW.md
+          test -f firmware/README.md
+          test -f agora/README.md
+          test -f backend/README.md
+          test -f web/README.md
+          git diff --check HEAD
